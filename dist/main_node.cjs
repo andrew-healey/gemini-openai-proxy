@@ -15649,6 +15649,18 @@ function parseBase64(base64) {
     }
   };
 }
+function removeSystem(messages) {
+  return messages.map((mess) => mess.role === "system" ? {
+    ...mess,
+    role: "user"
+  } : mess).reduce(
+    (agg, mess) => agg[agg.length - 1]?.role === "user" && mess.role === "user" ? [...agg.slice(0, agg.length - 1), {
+      role: "user",
+      content: agg[agg.length - 1].content + "\n" + mess.content
+    }] : [...agg, mess],
+    []
+  );
+}
 function openAiMessageToGeminiMessage(messages) {
   const result = messages.flatMap(({ role, content }) => {
     if (role === "system") {
@@ -15667,22 +15679,10 @@ function openAiMessageToGeminiMessage(messages) {
   });
   return result;
 }
-function hasImageMessage(messages) {
-  return messages.some((msg) => {
-    const content = msg.content;
-    if (content == null) {
-      return false;
-    }
-    if (typeof content === "string") {
-      return false;
-    }
-    return content.some((it) => it.type === "image_url");
-  });
-}
 function genModel(req) {
-  const model = hasImageMessage(req.messages) ? "gemini-pro-vision" /* GEMINI_PRO_VISION */ : "gemini-1.5-pro-preview-0215" /* GEMINI_PRO */;
+  const model = req.model;
   const generateContentRequest = {
-    contents: openAiMessageToGeminiMessage(req.messages),
+    contents: openAiMessageToGeminiMessage(removeSystem(req.messages)),
     generationConfig: {
       maxOutputTokens: req.max_tokens ?? void 0,
       temperature: req.temperature ?? void 0,
@@ -15703,14 +15703,17 @@ function genModel(req) {
 
 // src/gemini-api-client/gemini-api-client.ts
 var import_vertexai = __toESM(require_src6());
+var import_fs = require("fs");
 var project = process.env.GCP_PROJECT_ID;
 async function generateContent(apiParam, model, params, requestOptions) {
   const vertexAI = new import_vertexai.VertexAI({ project, location: "us-central1" });
+  console.log(model);
   const generativeModel = vertexAI.getGenerativeModel({
     model
     // Assuming GeminiModel has a name property that corresponds to the model ID
   });
   const request = params;
+  (0, import_fs.writeFileSync)("input.json", JSON.stringify(request, null, 2));
   const responseStream = await generativeModel.generateContent(request);
   const aggregatedResponse = await responseStream;
   const text = await aggregatedResponse.response.candidates[0].content.parts.filter((part) => "text" in part).map((part) => part.text).join(" ");

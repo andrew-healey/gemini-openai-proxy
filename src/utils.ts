@@ -45,6 +45,20 @@ function parseBase64(base64: string): Part {
   }
 }
 
+export function removeSystem(messages: OpenAI.Chat.ChatCompletionMessageParam[]): OpenAI.Chat.ChatCompletionMessageParam[] {
+  return messages.map(mess => mess.role === "system" ? {
+    ...mess,
+    role:"user"
+  } : mess).reduce((agg,mess) =>
+    agg[agg.length-1]?.role === "user" && mess.role === "user" ? [...agg.slice(0,agg.length-1),{
+      role:"user",
+      content:agg[agg.length-1].content + "\n" + mess.content
+    }] : [...agg,mess]
+    ,
+    []
+  )
+}
+
 export function openAiMessageToGeminiMessage(messages: OpenAI.Chat.ChatCompletionMessageParam[]): Content[] {
   const result: Content[] = messages
     .flatMap(({ role, content }) => {
@@ -86,10 +100,10 @@ function hasImageMessage(messages: OpenAI.Chat.ChatCompletionMessageParam[]): bo
 }
 
 export function genModel(req: OpenAI.Chat.ChatCompletionCreateParams): [GeminiModel, GenerateContentRequest] {
-  const model = hasImageMessage(req.messages) ? GeminiModel.GEMINI_PRO_VISION : GeminiModel.GEMINI_PRO
+  const model = req.model;//hasImageMessage(req.messages) ? GeminiModel.GEMINI_PRO_VISION : GeminiModel.GEMINI_PRO
 
   const generateContentRequest: GenerateContentRequest = {
-    contents: openAiMessageToGeminiMessage(req.messages),
+    contents: openAiMessageToGeminiMessage(removeSystem(req.messages)),
     generationConfig: {
       maxOutputTokens: req.max_tokens ?? undefined,
       temperature: req.temperature ?? undefined,

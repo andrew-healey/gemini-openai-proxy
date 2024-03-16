@@ -3,6 +3,7 @@ import { GoogleGenerativeAIError } from "./errors.ts"
 import { addHelpers } from "./response-helper.ts"
 import type { GenerateContentRequest, GenerateContentResponse, GenerateContentResult, RequestOptions } from "./types.ts"
 import { VertexAI } from '@google-cloud/vertexai';
+import { writeFileSync } from "fs";
 
 const project = process.env.GCP_PROJECT_ID;
 
@@ -16,6 +17,7 @@ export async function generateContent(
   const vertexAI = new VertexAI({project, location: "us-central1"});
 
   // Instantiate the model
+  console.log(model)
   const generativeModel = vertexAI.getGenerativeModel({
     model: model, // Assuming GeminiModel has a name property that corresponds to the model ID
   });
@@ -23,6 +25,11 @@ export async function generateContent(
   // Construct the request
   // Assuming params can be directly used or slightly transformed to match the expected structure
   const request = params;
+  // console.log(request)
+  // console.log(JSON.stringify(request.contents,null,2))
+
+  writeFileSync("input.json",JSON.stringify(request,null,2));
+  
 
   // Generate content using the Vertex AI SDK
   const responseStream = await generativeModel.generateContent(request);
