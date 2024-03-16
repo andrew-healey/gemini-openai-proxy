@@ -108,6 +108,6 @@ export function genModel(req: OpenAI.Chat.ChatCompletionCreateParams): [GeminiMo
   return [model, generateContentRequest]
 }
 export enum GeminiModel {
-  GEMINI_PRO = "gemini-pro",
+  GEMINI_PRO = "gemini-1.5-pro-preview-0215",
   GEMINI_PRO_VISION = "gemini-pro-vision",
 }

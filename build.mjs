@@ -8,9 +8,9 @@ const config = {
   bundle: true,
   outdir: "dist",
   platform: "node",
-  format: "esm",
+  format: "cjs",
   legalComments: "none",
-  outExtension: { ".js": ".mjs" },
+  outExtension: { ".js": ".cjs" },
   target: ["chrome100", "node20"],
   external: ["node:*"],
 }

@@ -2,6 +2,9 @@ import type { ApiParam, GeminiModel } from "../utils.ts"
 import { GoogleGenerativeAIError } from "./errors.ts"
 import { addHelpers } from "./response-helper.ts"
 import type { GenerateContentRequest, GenerateContentResponse, GenerateContentResult, RequestOptions } from "./types.ts"
+import { VertexAI } from '@google-cloud/vertexai';
+
+const project = process.env.GCP_PROJECT_ID;
 
 export async function generateContent(
   apiParam: ApiParam,
@@ -9,13 +12,29 @@ export async function generateContent(
   params: GenerateContentRequest,
   requestOptions?: RequestOptions,
 ): Promise<GenerateContentResult> {
-  const url = new RequestUrl(model, Task.GENERATE_CONTENT, /* stream */ false, apiParam)
-  const response = await makeRequest(url, JSON.stringify(params), requestOptions)
-  const responseJson: GenerateContentResponse = await response.json()
-  const enhancedResponse = addHelpers(responseJson)
-  return {
-    response: enhancedResponse,
-  }
+  // Initialize Vertex with your Cloud project and location
+  const vertexAI = new VertexAI({project, location: "us-central1"});
+
+  // Instantiate the model
+  const generativeModel = vertexAI.getGenerativeModel({
+    model: model, // Assuming GeminiModel has a name property that corresponds to the model ID
+  });
+
+  // Construct the request
+  // Assuming params can be directly used or slightly transformed to match the expected structure
+  const request = params;
+
+  // Generate content using the Vertex AI SDK
+  const responseStream = await generativeModel.generateContent(request);
+
+  // Wait for the response stream to complete
+  const aggregatedResponse = await responseStream;
+  const text = await aggregatedResponse.response.candidates[0].content.parts.filter((part) => "text" in part).map((part) => part.text).join(" ");
+
+  // Process the response to match GenerateContentResult structure
+  // const result: GenerateContentResult = aggregatedResponse;
+
+  return {response:{text: () => text}};
 }
 
 export async function makeRequest(url: RequestUrl, body: string, requestOptions?: RequestOptions): Promise<Response> {
