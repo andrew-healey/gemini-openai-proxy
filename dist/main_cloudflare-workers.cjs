@@ -13343,7 +13343,7 @@ var require_generate_content = __commonJS({
       return (0, post_fetch_processing_1.processNonStream)(response);
     }
     exports2.generateContent = generateContent2;
-    async function generateContentStream(location, project2, publisherModelEndpoint, token, request, apiEndpoint, generation_config, safety_settings, requestOptions) {
+    async function generateContentStream2(location, project2, publisherModelEndpoint, token, request, apiEndpoint, generation_config, safety_settings, requestOptions) {
       var _a, _b, _c;
       request = (0, pre_fetch_processing_1.formatContentRequest)(request, generation_config, safety_settings);
       (0, pre_fetch_processing_1.validateGenerateContentRequest)(request);
@@ -13375,7 +13375,7 @@ var require_generate_content = __commonJS({
       });
       return (0, post_fetch_processing_1.processStream)(response);
     }
-    exports2.generateContentStream = generateContentStream;
+    exports2.generateContentStream = generateContentStream2;
   }
 });
 
@@ -15310,9 +15310,35 @@ function genModel(req) {
 }
 
 // src/gemini-api-client/gemini-api-client.ts
-var import_vertexai = __toESM(require_src6());
+var import_vertexai = __toESM(require_src6(), 1);
 var import_fs = require("fs");
 var project = process.env.GCP_PROJECT_ID;
+async function* generateContentStream(apiParam, model, params, requestOptions) {
+  const vertexAI = new import_vertexai.VertexAI({ project, location: "us-central1" });
+  const generativeModel = vertexAI.getGenerativeModel({
+    model
+    // Assuming GeminiModel has a name property that corresponds to the model ID
+  });
+  const request = params;
+  (0, import_fs.writeFileSync)("input.json", JSON.stringify(request, null, 2));
+  const responseStream = await generativeModel.generateContentStream(request);
+  for await (const response of responseStream.stream) {
+    const [{ content, finishReason }] = response.candidates;
+    yield {
+      id: "chatcmpl-abc123",
+      object: "chat.completion.chunk",
+      created: Date.now(),
+      model,
+      choices: [
+        {
+          delta: { content: content.parts.filter((part) => "text" in part).map((part) => part.text).join("") },
+          finishReason,
+          index: 0
+        }
+      ]
+    };
+  }
+}
 async function generateContent(apiParam, model, params, requestOptions) {
   const vertexAI = new import_vertexai.VertexAI({ project, location: "us-central1" });
   console.log(model);
@@ -15322,9 +15348,12 @@ async function generateContent(apiParam, model, params, requestOptions) {
   });
   const request = params;
   (0, import_fs.writeFileSync)("input.json", JSON.stringify(request, null, 2));
-  const responseStream = await generativeModel.generateContent(request);
-  const aggregatedResponse = await responseStream;
-  const text = await aggregatedResponse.response.candidates[0].content.parts.filter((part) => "text" in part).map((part) => part.text).join(" ");
+  const responseStream = await generativeModel.generateContentStream(request);
+  for await (const response of responseStream.stream) {
+    console.log(response);
+  }
+  const aggregatedResponse = await responseStream.response;
+  const text = await aggregatedResponse.candidates[0].content.parts.filter((part) => "text" in part).map((part) => part.text).join(" ");
   return { response: { text: () => text } };
 }
 
@@ -15461,31 +15490,14 @@ var streamSSE = (c, cb, onError) => {
 // src/openai/chat/completions/StreamingChatProxyHandler.ts
 var streamingChatProxyHandler = async (c, req, genAi) => {
   const log2 = c.var.log;
-  const genOpenAiResp = (content, stop) => ({
-    id: "chatcmpl-abc123",
-    object: "chat.completion.chunk",
-    created: Date.now(),
-    model: req.model,
-    choices: [
-      {
-        delta: { role: "assistant", content },
-        finish_reason: stop ? "stop" : null,
-        index: 0
-      }
-    ]
-  });
   return streamSSE(c, async (sseStream) => {
     const [model, geminiReq] = genModel(req);
-    const geminiResp = await generateContent(genAi, model, geminiReq).then((it) => it.response.text()).catch((e) => e.message ?? e?.toString());
-    await sseStream.writeSSE({
-      data: JSON.stringify(genOpenAiResp(geminiResp, false))
-    });
-    await sseStream.writeSSE({
-      data: JSON.stringify(genOpenAiResp("", true))
-    });
-    const geminiResult = geminiResp;
-    log2.debug(req);
-    log2.debug(geminiResult);
+    const geminiResp = await generateContentStream(genAi, model, geminiReq);
+    for await (const chunk of geminiResp) {
+      await sseStream.writeSSE({
+        data: JSON.stringify(chunk)
+      });
+    }
     await sseStream.writeSSE({ data: "[DONE]" });
     await sseStream.close();
   });

@@ -4,8 +4,55 @@ import { addHelpers } from "./response-helper.ts"
 import type { GenerateContentRequest, GenerateContentResponse, GenerateContentResult, RequestOptions } from "./types.ts"
 import { VertexAI } from '@google-cloud/vertexai';
 import { writeFileSync } from "fs";
+import type { OpenAI } from "openai";
 
 const project = process.env.GCP_PROJECT_ID;
+
+export async function* generateContentStream(
+  apiParam: ApiParam,
+  model: GeminiModel,
+  params: GenerateContentRequest,
+  requestOptions?: RequestOptions,
+): AsyncGenerator<OpenAI.Chat.ChatCompletionChunk> {
+  // Initialize Vertex with your Cloud project and location
+  const vertexAI = new VertexAI({project, location: "us-central1"});
+
+  // Instantiate the model
+  const generativeModel = vertexAI.getGenerativeModel({
+    model: model, // Assuming GeminiModel has a name property that corresponds to the model ID
+  });
+
+  // Construct the request
+  // Assuming params can be directly used or slightly transformed to match the expected structure
+  const request = params;
+  // console.log(request)
+  // console.log(JSON.stringify(request.contents,null,2))
+
+  writeFileSync("input.json",JSON.stringify(request,null,2));
+  
+
+  // Generate content using the Vertex AI SDK
+  const responseStream = await generativeModel.generateContentStream(request);
+  // responseStream.stream is a stream
+
+  for await (const response of responseStream.stream){
+    const [{content,finishReason}] = response.candidates;
+    yield ({
+      id:"chatcmpl-abc123",
+      object:"chat.completion.chunk",
+      created:Date.now(),
+      model:model,
+      choices:[
+        {
+          delta:{content:content.parts.filter((part) => "text" in part).map((part) => part.text).join("")},
+          finish_reason:finishReason,
+          index:0,
+        }
+      ]
+    });
+  }
+}
+
 
 export async function generateContent(
   apiParam: ApiParam,
@@ -32,11 +79,16 @@ export async function generateContent(
   
 
   // Generate content using the Vertex AI SDK
-  const responseStream = await generativeModel.generateContent(request);
+  const responseStream = await generativeModel.generateContentStream(request);
+  // responseStream.stream is a stream
+
+  for await (const response of responseStream.stream){
+    console.log(response)
+  }
 
   // Wait for the response stream to complete
-  const aggregatedResponse = await responseStream;
-  const text = await aggregatedResponse.response.candidates[0].content.parts.filter((part) => "text" in part).map((part) => part.text).join(" ");
+  const aggregatedResponse = await responseStream.response;
+  const text = await aggregatedResponse.candidates[0].content.parts.filter((part) => "text" in part).map((part) => part.text).join(" ");
 
   // Process the response to match GenerateContentResult structure
   // const result: GenerateContentResult = aggregatedResponse;

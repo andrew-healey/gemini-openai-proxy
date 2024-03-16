@@ -5,6 +5,7 @@
   "author": "zuisong",
   "homepage": "https://github.com/zuisong/gemini-openai-proxy",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "start:deno": "deno run --allow-net --allow-env main_deno.ts",
     "start:bun": "bun main_bun.ts",
@@ -19,7 +20,8 @@
   "dependencies": {
     "@google-cloud/vertexai": "^0.5.0",
     "@hono/node-server": "1.8.2",
-    "hono": "4.1.0"
+    "hono": "4.1.0",
+    "openai": "^4.29.1"
   },
   "devDependencies": {
     "@types/node": "20.11.26",
