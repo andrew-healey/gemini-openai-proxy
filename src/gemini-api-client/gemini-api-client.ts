@@ -28,8 +28,6 @@ export async function* generateContentStream(
   // console.log(request)
   // console.log(JSON.stringify(request.contents,null,2))
 
-  writeFileSync("input.json",JSON.stringify(request,null,2));
-  
 
   // Generate content using the Vertex AI SDK
   const responseStream = await generativeModel.generateContentStream(request);
@@ -64,7 +62,7 @@ export async function generateContent(
   const vertexAI = new VertexAI({project, location: "us-central1"});
 
   // Instantiate the model
-  console.log(model)
+  // console.log(model)
   const generativeModel = vertexAI.getGenerativeModel({
     model: model, // Assuming GeminiModel has a name property that corresponds to the model ID
   });

@@ -11,4 +11,5 @@ pnpm-lock.yaml
 
 coverage/
 input.json
+output.json
 dist/
