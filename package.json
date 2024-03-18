@@ -26,7 +26,7 @@
     "openai": "^4.29.1"
   },
   "devDependencies": {
-    "@types/node": "20.11.26",
+    "@types/node": "20.11.29",
     "esbuild": "0.20.1",
     "eventsource-parser": "1.1.2"
   }
