@@ -22,7 +22,7 @@
     "@anysphere/priompt": "^0.1.27",
     "@google-cloud/vertexai": "^0.5.0",
     "@hono/node-server": "1.8.2",
-    "hono": "4.1.0",
+    "hono": "4.1.2",
     "openai": "^4.29.1"
   },
   "devDependencies": {
